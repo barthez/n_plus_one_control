@@ -189,6 +189,7 @@ describe NPlusOneControl::RSpec do
         NPlusOneControl::Collectors::DB.dup.tap do |collector|
           collector.key = :secondary_db
           collector.name = nil
+          collector.event = "sql.active_record"
         end
       end
 
@@ -210,18 +211,18 @@ describe NPlusOneControl::RSpec do
               .to perform_constant_number_of_queries.to(:secondary_db)
           end.to raise_error(RSpec::Expectations::ExpectationNotMetError, /SECONDARY_DB/)
         end
+      end
 
-        context "when collector has name" do
-          before { another_collector.name = "secondary database" }
+      context "when collector has name", :n_plus_one do
+        before { another_collector.name = "secondary database" }
 
-          populate { |n| create_list(:post, n) }
+        populate { |n| create_list(:post, n) }
 
-          specify do
-            expect do
-              expect { Post.find_each { |p| p.user.name } }
-                .to perform_constant_number_of_queries.to(:secondary_db)
-            end.to raise_error(RSpec::Expectations::ExpectationNotMetError, /secondary database/)
-          end
+        specify do
+          expect do
+            expect { Post.find_each { |p| p.user.name } }
+              .to perform_constant_number_of_queries.to(:secondary_db)
+          end.to raise_error(RSpec::Expectations::ExpectationNotMetError, /secondary database/)
         end
       end
     end

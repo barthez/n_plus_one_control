@@ -2,7 +2,8 @@
 
 ## master
 
-- Fix .ignore setting (.ignore setting was ignored by the Collector ;-))
+- Add possibility to create custom collectors ([@Earendil95][])
+- Fix .ignore setting (.ignore setting was ignored by the Collector ;-)) ([@mrzasa][])
 
 ## 0.6.1 (2021-03-05)
 
@@ -41,3 +42,4 @@ Could be specified via `NPLUSONE_BACKTRACE` env var.
 [@palkan]: https://github.com/palkan
 [@caalberts]: https://github.com/caalberts
 [@andrewhampton]: https://github.com/andrewhampton
+[@mrzasa]: https://github.com/mrzasa

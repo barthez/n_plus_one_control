@@ -16,10 +16,11 @@ module NPlusOneControl
           "from" => "SELECT"
         }.freeze
 
-        def failure_message(type, queries)
+        # This method enriches default error message with table usage stats
+        def failure_message(_, queries)
           msg = super
 
-          msg.concat(table_usage_stats(queries.map(&:last))) if NPlusOneControl.show_table_stats
+          msg << table_usage_stats(queries.map(&:last)) if NPlusOneControl.show_table_stats
 
           if NPlusOneControl.verbose
             queries.each do |(scale, data)|
@@ -28,7 +29,7 @@ module NPlusOneControl
             end
           end
 
-          msg.join
+          msg
         end
 
         private
@@ -51,7 +52,7 @@ module NPlusOneControl
             msg << "#{k}: #{before[k]} != #{after[k]}\n"
           end
 
-          msg
+          msg.join
         end
 
         def truncate_query(sql)
@@ -75,8 +76,9 @@ module NPlusOneControl
 
       self.key = :db
       self.name = "database"
+      self.event = -> { NPlusOneControl.event }
 
-      def callback(_name, _start, _finish, _message_id, values) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/LineLength
+      def callback(_name, _start, _finish, _message_id, values) # rubocop:disable Metrics/CyclomaticComplexity,Layout/LineLength
         return if %w[CACHE SCHEMA].include? values[:name]
         return if values[:sql].match?(NPlusOneControl.ignore)
 
@@ -91,10 +93,6 @@ module NPlusOneControl
         end
 
         @queries << query
-      end
-
-      def subscribe
-        @subscriber = ActiveSupport::Notifications.subscribe(NPlusOneControl.event, method(:callback))
       end
 
       private

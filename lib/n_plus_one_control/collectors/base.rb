@@ -11,7 +11,7 @@ module NPlusOneControl
           queries.each do |(scale, data)|
             msg << "  #{data[key].size} for N=#{scale}\n"
           end
-          msg
+          msg.join
         end
       end
 
@@ -21,7 +21,8 @@ module NPlusOneControl
       end
 
       def subscribe
-        @subscriber = ActiveSupport::Notifications.subscribe(self.class.event, method(:callback))
+        event = self.class.event.respond_to?(:call) ? self.class.event.call : self.class.event
+        @subscriber = ActiveSupport::Notifications.subscribe(event, method(:callback))
       end
 
       def reset

@@ -40,7 +40,8 @@ module NPlusOneControl
       populate: nil,
       matching: nil,
       scale_factors: nil,
-      warmup: nil
+      warmup: nil,
+      collectors: :db
     )
 
       raise ArgumentError, "Block is required" unless block_given?
@@ -53,7 +54,7 @@ module NPlusOneControl
         scale_factors: scale_factors || NPlusOneControl.default_scale_factors
       )
 
-      queries = @executor.call { yield }
+      queries = @executor.call(collectors: collectors) { yield }
 
       assert linear?(queries, slope: slope), NPlusOneControl.failure_message(:linear_queries, queries)
     end
@@ -77,8 +78,11 @@ module NPlusOneControl
         scales = pair.map(&:first)
         query_lists = pair.map(&:last)
 
-        actual_slope = (query_lists[1][:db].size - query_lists[0][:db].size) / (scales[1] - scales[0])
-        actual_slope <= slope
+        actual_slopes = query_lists[0].keys.map do |key|
+          (query_lists[1][key].size - query_lists[0][key].size) / (scales[1] - scales[0])
+        end
+
+        actual_slopes.all? { |actual_slope| actual_slope <= slope }
       end
     end
   end
