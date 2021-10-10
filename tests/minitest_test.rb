@@ -100,6 +100,19 @@ class TestMinitestLinearQueries < Minitest::Test
       Post.find_each { |p| p.user.name }
     end
   end
+
+  def test_constant_queries_with_custom_collector
+    another_collector = NPlusOneControl::Collectors::DB.dup.tap { |collector| collector.key = :secondary_db }
+    NPlusOneControl::CollectorsRegistry.register(another_collector)
+
+    populate = ->(n) { create_list(:post, n) }
+
+    assert_perform_constant_number_of_queries(populate: populate, collectors: :secondary_db) do
+      Post.preload(:user).find_each { |p| p.user.name }
+    end
+  ensure
+    NPlusOneControl::CollectorsRegistry.unregister(another_collector)
+  end
 end
 
 class TestMinitestPopulateMethod < Minitest::Test

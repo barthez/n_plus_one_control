@@ -9,7 +9,8 @@ module NPlusOneControl
       populate: nil,
       matching: nil,
       scale_factors: nil,
-      warmup: nil
+      warmup: nil,
+      collectors: :db
     )
 
       raise ArgumentError, "Block is required" unless block_given?
@@ -22,11 +23,16 @@ module NPlusOneControl
         scale_factors: scale_factors || NPlusOneControl.default_scale_factors
       )
 
-      queries = @executor.call { yield }
+      queries = @executor.call(collectors: collectors) { yield }
 
-      counts = queries.map { |q| q.last[:db] }.map(&:size)
+      counts = queries.map { |q| q.last.transform_values(&:size) }
 
-      assert counts.max == counts.min, NPlusOneControl.failure_message(:constant_queries, queries)
+      results = Array(collectors).map do |c|
+        counts_by_collector = counts.map { |count| count[c] }
+        [c, counts_by_collector.max == counts_by_collector.min]
+      end.to_h
+
+      assert results.values.all?, NPlusOneControl.failure_message(:constant_queries, queries)
     end
 
     def assert_perform_linear_number_of_queries(

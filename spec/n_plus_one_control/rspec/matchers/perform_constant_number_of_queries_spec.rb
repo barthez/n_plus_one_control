@@ -180,5 +180,50 @@ describe NPlusOneControl::RSpec do
         expect { Post.limit(current_scale) }.to perform_constant_number_of_queries
       end
     end
+
+    context "with custom collector" do
+      before { NPlusOneControl::CollectorsRegistry.register(another_collector) }
+      after { NPlusOneControl::CollectorsRegistry.unregister(another_collector) }
+
+      let(:another_collector) do
+        NPlusOneControl::Collectors::DB.dup.tap do |collector|
+          collector.key = :secondary_db
+          collector.name = nil
+        end
+      end
+
+      context "when no N+1", :n_plus_one do
+        populate { |n| create_list(:post, n) }
+
+        specify do
+          expect { Post.preload(:user).find_each { |p| p.user.name } }
+            .to perform_constant_number_of_queries.to(:secondary_db)
+        end
+      end
+
+      context "when has N+1", :n_plus_one do
+        populate { |n| create_list(:post, n) }
+
+        specify do
+          expect do
+            expect { Post.find_each { |p| p.user.name } }
+              .to perform_constant_number_of_queries.to(:secondary_db)
+          end.to raise_error(RSpec::Expectations::ExpectationNotMetError, /SECONDARY_DB/)
+        end
+
+        context "when collector has name" do
+          before { another_collector.name = "secondary database" }
+
+          populate { |n| create_list(:post, n) }
+
+          specify do
+            expect do
+              expect { Post.find_each { |p| p.user.name } }
+                .to perform_constant_number_of_queries.to(:secondary_db)
+            end.to raise_error(RSpec::Expectations::ExpectationNotMetError, /secondary database/)
+          end
+        end
+      end
+    end
   end
 end

@@ -8,15 +8,6 @@ module NPlusOneControl
   # Used to extract a table name from a query
   EXTRACT_TABLE_RXP = /(insert into|update|delete from|from) ['"`](\S+)['"`]/i.freeze
 
-  # Used to convert a query part extracted by the regexp above to the corresponding
-  # human-friendly type
-  QUERY_PART_TO_TYPE = {
-    "insert into" => "INSERT",
-    "update" => "UPDATE",
-    "delete from" => "DELETE",
-    "from" => "SELECT"
-  }.freeze
-
   FAILURE_MESSAGES = {
     constant_queries: "Expected to make the same number of queries",
     linear_queries: "Expected to make linear number of queries"

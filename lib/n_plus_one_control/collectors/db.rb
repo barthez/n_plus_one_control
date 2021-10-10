@@ -1,36 +1,43 @@
 # frozen_string_literal: true
 
 require "n_plus_one_control/collectors_registry"
+require "n_plus_one_control/collectors/base"
 
 module NPlusOneControl
   module Collectors
-    class DB
+    class DB < Base
       class << self
-        attr_accessor :key
+        # Used to convert a query part extracted by the regexp above to the corresponding
+        # human-friendly type
+        QUERY_PART_TO_TYPE = {
+          "insert into" => "INSERT",
+          "update" => "UPDATE",
+          "delete from" => "DELETE",
+          "from" => "SELECT"
+        }.freeze
 
         def failure_message(type, queries)
-          msg = ["#{::NPlusOneControl::FAILURE_MESSAGES[type]} to database, but got:\n"]
-          queries.each do |(scale, data)|
-            msg << "  #{data[:db].size} for N=#{scale}\n"
-          end
+          msg = super
 
           msg.concat(table_usage_stats(queries.map(&:last))) if NPlusOneControl.show_table_stats
 
           if NPlusOneControl.verbose
             queries.each do |(scale, data)|
               msg << "Queries for N=#{scale}\n"
-              msg << data[:db].map { |sql| "  #{truncate_query(sql)}\n" }.join.to_s
+              msg << data[key].map { |sql| "  #{truncate_query(sql)}\n" }.join.to_s
             end
           end
 
           msg.join
         end
 
+        private
+
         def table_usage_stats(runs) # rubocop:disable Metrics/MethodLength
           msg = ["Unmatched query numbers by tables:\n"]
 
           before, after = runs.map do |queries|
-            queries[:db].group_by do |query|
+            queries[key].group_by do |query|
               matches = query.match(EXTRACT_TABLE_RXP)
               next unless matches
 
@@ -67,20 +74,7 @@ module NPlusOneControl
       attr_reader :queries
 
       self.key = :db
-
-      def initialize(pattern)
-        @pattern = pattern
-        @queries = []
-      end
-
-      def subscribe
-        @subscriber = ActiveSupport::Notifications.subscribe(NPlusOneControl.event, method(:callback))
-      end
-
-      def reset
-        unsubscribe
-        @queries = []
-      end
+      self.name = "database"
 
       def callback(_name, _start, _finish, _message_id, values) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/LineLength
         return if %w[CACHE SCHEMA].include? values[:name]
@@ -99,15 +93,15 @@ module NPlusOneControl
         @queries << query
       end
 
+      def subscribe
+        @subscriber = ActiveSupport::Notifications.subscribe(NPlusOneControl.event, method(:callback))
+      end
+
       private
 
       def extract_query_source_location(locations)
         NPlusOneControl.backtrace_cleaner.call(locations.lazy)
           .take(NPlusOneControl.backtrace_length).to_a
-      end
-
-      def unsubscribe
-        ActiveSupport::Notifications.unsubscribe(@subscriber)
       end
     end
   end

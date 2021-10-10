@@ -66,9 +66,9 @@ describe NPlusOneControl::Executor do
         population: populate
       ).call(&observable)
       expect(result.first[0]).to eq 2
-      expect(result.first[1].size).to eq 2
+      expect(result.first[1][:db].size).to eq 2
       expect(result.last[0]).to eq 3
-      expect(result.last[1].size).to eq 3
+      expect(result.last[1][:db].size).to eq 3
     end
   end
 
